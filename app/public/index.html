@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en" data-theme="edb">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Oracle Compatibility Lab: orafce + ora2pg vs EPAS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2328495a'/%3E%3Cpath d='M8 10h9a5 5 0 0 1 0 12H8z M8 16h13' fill='none' stroke='%23e7c568' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-top">
+    <div class="brand">
+      <img src="https://www.enterprisedb.com/themes/custom/edb_theme/logo2.svg" alt="EDB" class="brand-logo" onerror="this.style.display='none'" />
+      <div>
+        <h1>Oracle Compatibility Lab</h1>
+        <div class="sub">One Oracle schema, two ways to Postgres: <b>orafce + ora2pg</b> on community PostgreSQL, or <b>EPAS</b>. Both run live, side by side.</div>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="status-strip" id="status-strip"></div>
+      <button class="btn ghost" id="reset-btn" title="Drop the migrated schema from PostgreSQL and EPAS">Reset lab</button>
+      <button class="btn ghost" id="sql-console-toggle">SQL Console</button>
+    </div>
+  </div>
+</header>
+
+<div class="app-body">
+  <nav class="tab-rail" id="tab-rail">
+    <button data-view="intro" class="active"><span class="t-title">Intro</span><span class="t-desc">Two routes off Oracle</span></button>
+    <button data-view="assess"><span class="t-title">1 &middot; Assess</span><span class="t-desc">What is in the Oracle schema</span></button>
+    <button data-view="migrate"><span class="t-title">2 &middot; Migrate</span><span class="t-desc">Run both routes for real</span></button>
+    <button data-view="bench"><span class="t-title">3 &middot; Same SQL, 3 engines</span><span class="t-desc">Compatibility test bench</span></button>
+    <button data-view="scorecard"><span class="t-title">Scorecard</span><span class="t-desc">Side-by-side comparison</span></button>
+    <button data-view="considerations"><span class="t-title">Considerations</span><span class="t-desc">Pros, cons, when to choose</span></button>
+  </nav>
+
+  <main class="content">
+
+    <!-- ===================================================== INTRO -->
+    <section class="view scrollable active" id="view-intro">
+      <div class="view-header">
+        <h2>Moving off Oracle: orafce + ora2pg, or EPAS?</h2>
+        <p>Two routes lead from Oracle to Postgres. <b>Route A</b> stays on community PostgreSQL: <b>ora2pg</b> converts the schema and the code, the <b>orafce</b> extension supplies Oracle-style functions, and people fix what is left. <b>Route B</b> moves to <b>EDB Postgres Advanced Server (EPAS)</b>, a Postgres that understands Oracle's SQL, PL/SQL, packages and data semantics itself, so most code is <i>moved</i> rather than <i>converted</i>. This lab runs both routes against the same live Oracle database, so you can compare the outcomes instead of the brochures.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card path-card" style="--node-color: var(--color-node-3)">
+          <h3>Route A</h3>
+          <p class="big">Community PostgreSQL 18 + orafce + ora2pg</p>
+          <p><b>orafce</b> is an open-source extension that adds Oracle-compatible functions (<code>NVL</code>, <code>DECODE</code>, <code>ADD_MONTHS</code> &hellip;), the <code>varchar2</code> type, <code>DUAL</code>, and libraries such as <code>DBMS_OUTPUT</code>, <code>DBMS_PIPE</code> and <code>UTL_FILE</code>. It does not touch the SQL parser, so Oracle-only syntax still fails.</p>
+          <p><b>ora2pg</b> is an open-source Perl tool that assesses an Oracle schema, converts DDL and PL/SQL to PostgreSQL syntax, and copies the data.</p>
+          <div class="tagline"><span class="badge">open source</span><span class="badge">no license fee</span><span class="badge">community support</span><span class="badge">runs on any PostgreSQL</span></div>
+          <div class="small-note"><a class="doc-link" href="https://github.com/orafce/orafce" target="_blank" rel="noopener">orafce &#8599;</a> <a class="doc-link" href="https://ora2pg.darold.net/documentation.html" target="_blank" rel="noopener">ora2pg docs &#8599;</a></div>
+        </div>
+        <div class="card path-card" style="--node-color: var(--color-node-1)">
+          <h3>Route B</h3>
+          <p class="big">EDB Postgres Advanced Server 18, Oracle-compatible mode</p>
+          <p><b>EPAS</b> is PostgreSQL plus EDB's Oracle compatibility built into the server: SPL and PL/SQL, packages, <code>ROWNUM</code>, <code>CONNECT BY</code>, <code>(+)</code> joins, <code>MINUS</code>, synonyms, <code>NUMBER</code> / <code>VARCHAR2</code> / <code>DATE</code> types, autonomous transactions, and a long list of <code>DBMS_*</code> / <code>UTL_*</code> packages.</p>
+          <p><b>EDB Migration Toolkit</b> copies schema and data straight from Oracle. Or you simply run your existing Oracle scripts against it and see what complains.</p>
+          <div class="tagline"><span class="badge">commercial subscription</span><span class="badge">single-vendor support</span><span class="badge">EDB-specific features</span></div>
+          <div class="small-note"><a class="doc-link" href="https://www.enterprisedb.com/docs/epas/latest/" target="_blank" rel="noopener">EPAS docs &#8599;</a> <a class="doc-link" href="https://www.enterprisedb.com/docs/migration_toolkit/latest/" target="_blank" rel="noopener">Migration Toolkit &#8599;</a></div>
+        </div>
+      </div>
+
+      <div class="card section-gap">
+        <h3>Two routes, one source</h3>
+        <div class="flow-row">
+          <div class="flow-label">Route A &middot; open-source tool chain</div>
+          <div class="flow-step src"><b>Oracle</b><span>ACME schema, PL/SQL package, data</span></div><div class="flow-arrow">&rarr;</div>
+          <div class="flow-step tool"><b>ora2pg</b><span>assess, convert DDL and PL/SQL, copy data</span></div><div class="flow-arrow">&rarr;</div>
+          <div class="flow-step hand"><b>People</b><span>fix what the converter got wrong or could not convert</span></div><div class="flow-arrow">&rarr;</div>
+          <div class="flow-step dst"><b>PostgreSQL 18 + orafce</b><span>standard Postgres, Oracle-style helpers</span></div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-label">Route B &middot; Oracle-compatible server</div>
+          <div class="flow-step src"><b>Oracle</b><span>the same schema, the same data</span></div><div class="flow-arrow">&rarr;</div>
+          <div class="flow-step tool"><b>EDB Migration Toolkit</b><span>or: replay the Oracle scripts as written</span></div><div class="flow-arrow">&rarr;</div>
+          <div class="flow-step dst"><b>EPAS 18, Oracle mode</b><span>parser and runtime speak Oracle</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2 section-gap">
+        <div class="card">
+          <h3>The test subject: ACME <span class="badge">live from Oracle</span></h3>
+          <p class="intro-text">A small order-management schema, written to be full of the Oracle idioms real systems accumulate: a PL/SQL package with state, constants, <code>BULK COLLECT</code> and an autonomous transaction; triggers; hierarchical queries; <code>ROWNUM</code>; old-style outer joins; sequences; a synonym.</p>
+          <div class="inv-grid" id="inventory"><div class="op-log-empty">Reading the Oracle data dictionary...</div></div>
+        </div>
+        <div class="card">
+          <h3>How to run this demo <span class="badge">about 20 minutes</span></h3>
+          <ol class="steps">
+            <li><a href="#" data-goto="assess">Assess</a>: read the Oracle source, see which parts are Oracle-specific, and run ora2pg's own assessment.</li>
+            <li><a href="#" data-goto="migrate">Migrate</a>: run Route A and watch what breaks, apply the manual fixes, then run Route B with the same Oracle database as the source.</li>
+            <li><a href="#" data-goto="bench">Same SQL, three engines</a>: fire the same Oracle statements at Oracle, PostgreSQL + orafce and EPAS and read the verdicts.</li>
+            <li><a href="#" data-goto="scorecard">Scorecard</a> and <a href="#" data-goto="considerations">Considerations</a>: what the lab measured, and when to pick which route.</li>
+          </ol>
+          <div class="small-note">The <b>SQL Console</b> (top right) runs SQL against all three databases. <b>Reset lab</b> drops both migrated schemas so you can start again.</div>
+        </div>
+      </div>
+
+      <div class="card section-gap wired">
+        <h3>How this lab is wired</h3>
+        <p>Four containers: <b>Oracle Database Free</b> holds the source (loaded from <code>oracle/sql/*.sql</code>); <b>PostgreSQL 18 + orafce</b> is Route A's target; <b>EPAS 18</b> initialised with <code>--redwood-like</code> (Oracle-compatible mode) is Route B's target; and this web app, which also carries the real tools it drives: <b>ora2pg 25</b>, <b>EDB Migration Toolkit</b> and <code>psql</code>. Nothing is mocked: every console on the Migrate tab streams the actual output of those tools, and every verdict on the test bench is a real query on a real engine.</p>
+        <p class="section-gap" id="connect-info"></p>
+        <p class="small-note" style="margin-top:10px"><b>What this lab does not tell you.</b> The ACME schema has about 50 objects and 9,000 rows. Use it to understand the <i>kinds</i> of problems each route has, not to predict the size of your project. Performance, high availability, licensing cost and your own application code are outside its scope; assess your real schema with ora2pg's report and with EDB's Migration Portal.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== ASSESS -->
+    <section class="view scrollable" id="view-assess">
+      <div class="view-header">
+        <h2>Step 1 &middot; Assess: what is in the Oracle schema?</h2>
+        <p>Before choosing a route, find out what you are carrying. Below is the actual Oracle source with its Oracle-specific constructs highlighted, a scan of how often each one occurs, and what each route does with it. The right column is what <i>this lab observed</i> when it ran both routes, not what a brochure promises.</p>
+      </div>
+
+      <div class="grid-2" style="align-items:start">
+        <div class="card">
+          <h3>The Oracle source <span class="badge" id="src-note">oracle/sql</span></h3>
+          <div class="file-tabs" id="file-tabs"></div>
+          <pre class="code" id="source-code">Loading...</pre>
+          <div class="small-note">Highlighted: constructs that PostgreSQL does not have, or has differently.</div>
+        </div>
+        <div class="card">
+          <h3>Oracle-specific constructs, and what each route does with them</h3>
+          <div style="max-height:610px; overflow:auto"><table class="feature-table" id="feature-table"><tr><td>Scanning...</td></tr></table></div>
+          <div class="small-note"><span class="pill native">works as written</span> <span class="pill orafce">orafce provides it</span> <span class="pill auto">tool converts it</span> <span class="pill manual">manual rewrite</span></div>
+        </div>
+      </div>
+
+      <div class="card section-gap">
+        <h3>ora2pg assessment <span class="badge">real report, from the live Oracle database</span></h3>
+        <div class="controls-row" style="margin-top:0">
+          <button class="btn primary" id="assess-btn">Run ora2pg assessment</button>
+          <span class="small-note" style="margin:0">Runs <code>ora2pg -t SHOW_REPORT --estimate_cost</code>. EDB's Migration Portal does the equivalent for the EPAS route.</span>
+        </div>
+        <div class="stage" id="assess-stage" hidden>
+          <ol class="stepper" id="assess-stepper"></ol>
+          <div class="console-wrap"><pre class="console" id="assess-console" style="height:170px"></pre></div>
+        </div>
+        <div class="result-block" id="assess-result"></div>
+      </div>
+    </section>
+
+    <!-- ===================================================== MIGRATE -->
+    <section class="view scrollable" id="view-migrate">
+      <div class="view-header">
+        <h2>Step 2 &middot; Migrate: the same Oracle schema, two routes</h2>
+        <p>Both routes read from the same live Oracle database and finish with the same check: <b>every migrated object is exercised and its result compared with Oracle's</b>, in a session that is rolled back afterwards. Run Route A first: its console shows where a converter earns its keep and where it quietly does not.</p>
+      </div>
+
+      <div class="paths">
+        <!-- Route A -->
+        <div class="card path-panel" style="--node-color: var(--color-node-3)">
+          <h3>Route A &middot; ora2pg + orafce <span class="badge">PostgreSQL 18</span></h3>
+          <p class="desc">ora2pg exports the schema and PL/SQL as PostgreSQL SQL and copies the data. The converted files are loaded as they are, then every object is tested. What fails is what a developer would have to fix by hand.</p>
+          <div class="path-actions">
+            <button class="btn primary" id="a-run">1 &middot; Run the ora2pg migration</button>
+            <button class="btn" id="a-fix" disabled>2 &middot; Apply the manual fixes</button>
+          </div>
+          <div class="stage" id="a-stage" hidden>
+            <ol class="stepper" id="a-stepper"></ol>
+            <div class="progress-label" id="a-progress">&nbsp;</div>
+            <div class="console-wrap"><pre class="console" id="a-console"></pre><button class="scroll-btn top" data-scroll="a-console:top" title="Top">&uarr;</button><button class="scroll-btn bottom" data-scroll="a-console:bottom" title="Bottom">&darr;</button></div>
+          </div>
+          <div class="result-block" id="a-result"></div>
+        </div>
+
+        <!-- Route B -->
+        <div class="card path-panel" style="--node-color: var(--color-node-1)">
+          <h3>Route B &middot; EPAS <span class="badge">Oracle-compatible mode</span></h3>
+          <p class="desc">EDB Migration Toolkit reads the schema and the data from Oracle and recreates them in EPAS, PL/SQL package and triggers included. The alternative below skips every tool: replay the original Oracle scripts as written.</p>
+          <div class="path-actions">
+            <button class="btn primary" id="b-run">Migrate with EDB Migration Toolkit</button>
+            <button class="btn" id="b-replay">Or: replay the Oracle scripts as written</button>
+          </div>
+          <div class="stage" id="b-stage" hidden>
+            <ol class="stepper" id="b-stepper"></ol>
+            <div class="progress-label" id="b-progress">&nbsp;</div>
+            <div class="console-wrap"><pre class="console" id="b-console"></pre><button class="scroll-btn top" data-scroll="b-console:top" title="Top">&uarr;</button><button class="scroll-btn bottom" data-scroll="b-console:bottom" title="Bottom">&darr;</button></div>
+          </div>
+          <div class="result-block" id="b-result"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================== BENCH -->
+    <section class="view scrollable" id="view-bench">
+      <div class="view-header">
+        <h2>Step 3 &middot; Same SQL, three engines</h2>
+        <p>Every statement here is written in Oracle's dialect and sent <b>unchanged</b> to Oracle, to PostgreSQL + orafce and to EPAS, in a session that is rolled back afterwards. <b>PG + orafce</b> shows what happens as-is and, where plain PostgreSQL needs different syntax, the <b>rewrite</b> a developer would have to write. The <i>migrated objects</i> need Step 2 first.</p>
+      </div>
+      <div class="controls-row" style="margin-top:0">
+        <button class="btn primary" id="bench-run-all">Run all</button>
+        <span class="status-line" id="bench-status" style="margin:0"></span>
+      </div>
+      <div class="bench-score" id="bench-score"></div>
+      <div id="bench-list"></div>
+    </section>
+
+    <!-- ===================================================== SCORECARD -->
+    <section class="view scrollable" id="view-scorecard">
+      <div class="view-header">
+        <h2>Scorecard: orafce + ora2pg vs EPAS</h2>
+        <p>First the numbers this lab measured on the ACME schema (they appear after you run Step 2 and Step 3), then the wider comparison. A gold edge marks the route that is ahead on that point; no edge means it depends on you. Items marked <span class="badge">observed here</span> were measured in this lab.</p>
+      </div>
+      <div class="lab-numbers" id="lab-numbers"></div>
+      <div id="score-table-wrap"></div>
+    </section>
+
+    <!-- ===================================================== CONSIDERATIONS -->
+    <section class="view scrollable" id="view-considerations">
+      <div class="view-header">
+        <h2>Considerations: pros, cons, and when to choose which</h2>
+        <p class="considerations-intro">Neither route is the answer for every estate. This page is the checklist: when each one is the right call, and the traps this lab actually fell into.</p>
+      </div>
+      <div class="choice-grid" id="choice-grid"></div>
+      <h3 class="group-title">Traps this lab fell into</h3>
+      <div class="pitfall-grid" id="pitfall-grid"></div>
+    </section>
+
+  </main>
+</div>
+
+<div class="modal-overlay" id="sql-console-overlay" hidden>
+  <div class="modal-panel sql-console-modal">
+    <div class="modal-header">
+      <h3>SQL Console</h3>
+      <button class="icon-btn" id="sql-console-close" aria-label="Close">&times;</button>
+    </div>
+    <p class="small-note" style="margin-top:0">Run SQL (or a PL/SQL / <code>DO</code> block, or a <code>psql</code> meta-command such as <code>\d+ employees</code> on the two Postgres targets) against any of the three databases. Statements are committed. The same query often behaves differently depending on the target: that is the point.</p>
+    <div class="controls-row" style="margin-top:0">
+      <label class="field">Target <select id="sql-target-select"></select></label>
+      <button class="btn primary" id="sql-run" style="margin-top:16px">Run (Ctrl+Enter)</button>
+      <span class="snippets" id="sql-snippets"></span>
+    </div>
+    <textarea class="sql-textarea" id="sql-input" spellcheck="false" placeholder="SELECT order_pkg.order_total(10001) FROM dual"></textarea>
+    <div class="status-line" id="sql-status"></div>
+    <div class="card section-gap" id="sql-result-card" style="display:none">
+      <h3 id="sql-result-title"></h3>
+      <div class="table-scroll" style="max-height:340px"><table class="data-table" id="sql-result-table"></table></div>
+      <pre class="raw-block nowrap" id="sql-result-raw" style="display:none; height:auto; max-height:320px"></pre>
+      <pre class="out-block" id="sql-result-out" style="display:none"></pre>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+# Oracle -> Postgres compatibility lab. Four containers:
+#   oracle  the source: Oracle Database Free with the ACME schema (oracle/sql)
+#   pg      path A target: community PostgreSQL 18 + orafce
+#   epas    path B target: EDB Postgres Advanced Server 18, Oracle-compatible mode
+#   app     the web UI plus the migration tools (ora2pg, EDB Migration Toolkit)
+name: orafce-vs-epas
+
+services:
+  oracle:
+    image: ${ORACLE_IMAGE:-container-registry.oracle.com/database/free:latest}
+    container_name: orafce-oracle
+    environment:
+      ORACLE_PWD: manager
+    volumes:
+      - ./oracle/sql:/opt/oracle/scripts/setup:ro
+    ports: ["127.0.0.1:${ORACLE_PORT:-1521}:1521"]
+
+  pg:
+    build: ./pg
+    image: orafce-demo-pg:latest
+    container_name: orafce-pg
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports: ["127.0.0.1:${PG_PORT:-5432}:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acme -d acme"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  epas:
+    build:
+      context: ./epas
+      secrets: [repo_token]
+    image: orafce-demo-epas:latest
+    container_name: orafce-epas
+    ports: ["127.0.0.1:${EPAS_PORT:-5444}:5444"]
+    healthcheck:
+      test: ["CMD-SHELL", "/usr/edb/as18/bin/pg_isready -p 5444 -U acme -d acme"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+
+  app:
+    build:
+      context: ./app
+      secrets: [repo_token]
+    image: orafce-demo-app:latest
+    container_name: orafce-app
+    depends_on:
+      pg:   { condition: service_healthy }
+      epas: { condition: service_healthy }
+    environment:
+      ORACLE_CONNECT: oracle:1521/FREEPDB1
+      PG_HOST: pg
+      EPAS_HOST: epas
+      HOST_PG_PORT: "${PG_PORT:-5432}"
+      HOST_EPAS_PORT: "${EPAS_PORT:-5444}"
+      HOST_ORACLE_PORT: "${ORACLE_PORT:-1521}"
+    volumes:
+      - ./oracle/sql:/oracle-sql:ro
+      - ./fixes:/fixes:ro
+    ports: ["127.0.0.1:${WEBAPP_PORT:-3000}:8080"]
+
+secrets:
+  repo_token:
+    file: ${EDB_TOKEN_FILE:-${HOME}/.tokens/edb_subscription_token}

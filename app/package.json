@@ -1,0 +1,13 @@
+{
+  "name": "orafce-vs-epas-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Oracle compatibility lab: orafce + ora2pg on community Postgres vs EDB Postgres Advanced Server.",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "oracledb": "^6.6.0",
+    "pg": "^8.12.0"
+  }
+}
